@@ -50,3 +50,9 @@ This Python program organizes a **Secret Santa** exchange and sends personalized
     Best wishes,
     Your Secret Santa Organizer
 ```
+
+## Notes
+Ensure your SMTP server allows external applications to send emails. For Gmail, you may need to enable app passwords or less secure apps.
+
+## License
+This project is licensed under the MIT License.
