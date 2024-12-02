@@ -105,7 +105,7 @@ def main() -> None:
         email_body = f"""
         Hola mi vida,
 
-        ¡Qué emoción! Estoy aquí para contarte que este año tu amigo invisible es: **{person_to_send["name"]}** 🎅.
+        ¡Qué emoción! Estoy aquí para contarte que este año tu amigo invisible es: {participant} 🎅.
 
         Recuerda mantenerlo en secreto hasta el día del intercambio, y piensa en algo especial que le saque una sonrisa.
 
