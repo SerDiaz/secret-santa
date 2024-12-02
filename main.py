@@ -29,34 +29,45 @@ def load_participants(file_path: str) -> List[Dict[str, str]]:
     with open(file_path, 'r') as f:
         return json.load(f)
 
-def assign_secret_santa(participants: List[Tuple[str, str]]) -> Dict[str, Tuple[str, str]]:
+def assign_secret_santa(participants: List[Dict[str, str]]) -> Dict[str, Dict[str, str]]:
     """
-    Assigns Secret Santa pairs randomly, ensuring no one is assigned to themselves.
+    Assigns Secret Santa pairs randomly while respecting exclusions,
+    ensuring no one is assigned to themselves or to a restricted name.
 
     Args:
-        participants (List[Tuple[str, str]]): List of participants with their names and emails.
+        participants (List[Dict[str, str]]): List of participants, each represented as a dictionary
+                                             with 'name', 'email', and 'exclude' keys.
 
     Returns:
-        Dict[str, Tuple[str, str]]: A dictionary where the key is the participant's name,
-                                    and the value is a tuple with the assigned name and email.
+        Dict[str, Dict[str, str]]: A dictionary where the key is the participant's name,
+                                   and the value is another dictionary with the assigned
+                                   'name' and 'email'.
     """
-    names = [p[0] for p in participants]
-    emails = {p[0]: p[1] for p in participants}
+    # Extract names and emails
+    names = [p['name'] for p in participants]
+    emails = {p['name']: p['email'] for p in participants}
+    restrictions = {p['name']: set(p['exclude']) for p in participants}
     assigned = names[:]
-    random.shuffle(assigned)
-
-    # Ensure no one is assigned to themselves
-    while any(n == a for n, a in zip(names, assigned)):
+    
+    # Shuffle until valid assignments are found
+    max_attempts = 1000
+    for attempt in range(max_attempts):
         random.shuffle(assigned)
+        # Check if all assignments are valid
+        if all(assigned[i] not in restrictions[names[i]] and assigned[i] != names[i]
+               for i in range(len(names))):
+            break
+    else:
+        raise ValueError("Unable to find a valid assignment with the given restrictions.")
+    
+    # Build the result dictionary
+    return {names[i]: {'name': assigned[i], 'email': emails[assigned[i]]} for i in range(len(names))}
 
-    return {n: (a, emails[a]) for n, a in zip(names, assigned)}
-
-def send_email(sender: str, recipient: str, subject: str, body: str) -> None:
+def send_email(recipient: str, subject: str, body: str) -> None:
     """
     Sends an email using SMTP.
 
     Args:
-        sender (str): Sender's email address.
         recipient (str): Recipient's email address.
         subject (str): Email subject line.
         body (str): Email body content.
@@ -70,9 +81,9 @@ def send_email(sender: str, recipient: str, subject: str, body: str) -> None:
             server.login(EMAIL, PASSWORD)
             msg = MIMEText(body)
             msg['Subject'] = subject
-            msg['From'] = sender
+            msg['From'] = EMAIL
             msg['To'] = recipient
-            server.sendmail(sender, recipient, msg.as_string())
+            server.sendmail(EMAIL, recipient, msg.as_string())
             print(f"Email sent to {recipient}")
     except Exception as e:
         print(f"Error sending email to {recipient}: {e}")
@@ -84,22 +95,31 @@ def main() -> None:
 
     # Get participants
     participants = load_participants('participants.json')
-
     if not participants:
         print("No participants found. Please check the .env file.")
         return
 
     assignments = assign_secret_santa(participants)
-
-    for participant, (santa, santa_email) in assignments.items():
+    for participant, person_to_send in assignments.items():
+        email_subject= "Tu amigo invisible este año 2024 es ..."
         email_body = f"""
-        Hi {participant},
+        Hola mi vida,
 
-        You are the Secret Santa for: {santa}. Keep it a secret! 🎅
+        ¡Qué emoción! Estoy aquí para contarte que este año tu amigo invisible es: **{person_to_send["name"]}** 🎅.
 
-        Happy gifting!
+        Recuerda mantenerlo en secreto hasta el día del intercambio, y piensa en algo especial que le saque una sonrisa.
+
+        Buena semanita, mi niño, y coge una rebequita por si refresca,
+        Tu organizador del Amigo Invisible 🎄
         """
-        # send_email(EMAIL, santa_email, "Secret Santa Assignment", email_body)
+        santa_email = person_to_send['email']
+
+        send_email(
+            recipient = santa_email,
+            subject = email_subject,
+            body = email_body
+        )
+        
 
 if __name__ == '__main__':
     main()
